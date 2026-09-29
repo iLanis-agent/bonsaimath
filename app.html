@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BonsaiMath - calculator</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #121a12; color: #eaf2ea; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  main { max-width: 720px; padding: 32px 20px 48px; width: 100%; box-sizing: border-box; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  p.sub { color: #a8c4ab; margin: 0 0 20px; }
+  .card { background: #1a271a; border: 1px solid #2f452f; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  label { display: block; color: #9ab89c; font-size: 0.82rem; margin-bottom: 4px; }
+  input, select { width: 100%; box-sizing: border-box; background: #121a12; border: 1px solid #3a543a; color: #eaf2ea; border-radius: 8px; padding: 9px 10px; font-size: 0.95rem; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .presets button { background: #223522; color: #d3e6d4; border: 1px solid #3a543a; border-radius: 999px; padding: 7px 14px; font-size: 0.85rem; cursor: pointer; }
+  .presets button:hover { background: #2e472e; }
+  .out { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .metric { background: #121a12; border: 1px solid #2f452f; border-radius: 10px; padding: 12px 14px; }
+  .metric .v { font-size: 1.3rem; font-weight: 700; color: #8cc78c; }
+  .metric .k { color: #9ab89c; font-size: 0.78rem; margin-top: 2px; }
+  .note { color: #88a58a; font-size: 0.82rem; line-height: 1.5; margin-top: 10px; }
+  a.back { color: #8cc78c; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>&#127794; BonsaiMath</h1>
+  <p class="sub">Bonsai sizing and care calculator. Measure the tree; get honest numbers.</p>
+  <div class="presets">
+    <button data-p="juniper">Shohin juniper</button>
+    <button data-p="maple">Japanese maple</button>
+    <button data-p="ficus">Indoor ficus</button>
+    <button data-p="pinetrain">Pine in training</button>
+  </div>
+  <div class="card">
+    <div class="grid">
+      <div><label>Tree type</label><select id="treeType"><option value="conifer" selected>Conifer</option><option value="deciduous">Deciduous</option><option value="tropical">Tropical</option></select></div>
+      <div><label>Style</label><select id="style"><option value="informal" selected>Informal upright</option><option value="cascade">Cascade</option><option value="literati">Literati</option></select></div>
+      <div><label>Tree height (in)</label><input id="heightIn" type="number" value="15" min="2" step="0.5"></div>
+      <div><label>Canopy spread (in)</label><input id="canopyIn" type="number" value="14" min="2" step="0.5"></div>
+      <div><label>Trunk caliper (in)</label><input id="trunkIn" type="number" value="1.5" min="0.25" step="0.25"></div>
+      <div><label>Tree age (years)</label><input id="ageYears" type="number" value="8" min="1"></div>
+      <div><label>Local temp today (F)</label><input id="tempF" type="number" value="75"></div>
+      <div><label>Season</label><select id="season"><option value="spring" selected>Spring</option><option value="summer">Summer</option><option value="fall">Fall</option><option value="winter">Winter</option></select></div>
+      <div><label>Target trunk (in)</label><input id="targetIn" type="number" value="2.5" min="0.5" step="0.25"></div>
+      <div><label>Species speed</label><select id="speed"><option value="medium" selected>Medium</option><option value="fast">Fast (elm, ficus)</option><option value="slow">Slow (pine, juniper)</option></select></div>
+    </div>
+  </div>
+  <div class="out">
+    <div class="metric"><div class="v" id="o-pot">-</div><div class="k">Pot L x W x D (in)</div></div>
+    <div class="metric"><div class="v" id="o-soil">-</div><div class="k">Soil needed (liters)</div></div>
+    <div class="metric"><div class="v" id="o-mix">-</div><div class="k">Akadama / pumice / lava (L)</div></div>
+    <div class="metric"><div class="v" id="o-water">-</div><div class="k">Watering interval</div></div>
+    <div class="metric"><div class="v" id="o-feed">-</div><div class="k">Feeding this season</div></div>
+    <div class="metric"><div class="v" id="o-thick">-</div><div class="k">Years to target trunk</div></div>
+    <div class="metric"><div class="v" id="o-repot">-</div><div class="k">Repot every (years)</div></div>
+  </div>
+  <p class="note" id="o-wverdict"></p>
+  <p class="note">Proportions are the classic starting points, not law - a masculine trunk can carry a heavier pot, and show trees bend every rule. The watering interval is a ceiling; the chopstick test decides the day.</p>
+  <p><a class="back" href="index.html">&larr; Back to BonsaiMath</a></p>
+</main>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var ids = ['treeType','style','heightIn','canopyIn','trunkIn','ageYears','tempF','season','targetIn','speed'];
+  function num(id) { var v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : 0; }
+  function compute() {
+    if (typeof BonsaiMath === 'undefined') return;
+    var type = document.getElementById('treeType').value;
+    var style = document.getElementById('style').value;
+    var height = num('heightIn'), canopy = num('canopyIn'), trunk = num('trunkIn');
+    var len = BonsaiMath.potLengthIn(height, canopy);
+    var dep = BonsaiMath.potDepthIn(trunk, style);
+    var wid = BonsaiMath.potWidthIn(len);
+    var soil = BonsaiMath.soilLiters(len, wid, dep);
+    var mix = BonsaiMath.mixVolumes(soil, type);
+    var water = BonsaiMath.wateringDays(soil, type, num('tempF'));
+    var feed = BonsaiMath.feedingPlan(type, document.getElementById('season').value);
+    var thickPot = BonsaiMath.thickeningYears(trunk, num('targetIn'), 'pot', document.getElementById('speed').value);
+    var thickGround = BonsaiMath.thickeningYears(trunk, num('targetIn'), 'ground', document.getElementById('speed').value);
+    var repot = BonsaiMath.repotYears(type, num('ageYears'));
+    document.getElementById('o-pot').textContent = len + ' x ' + wid + ' x ' + dep;
+    document.getElementById('o-soil').textContent = soil + ' L';
+    document.getElementById('o-mix').textContent = mix.akadama + ' / ' + mix.pumice + ' / ' + mix.lava;
+    document.getElementById('o-water').textContent = '~' + water + ' days';
+    document.getElementById('o-feed').textContent = feed.perMonth > 0 ? feed.perMonth + 'x/month at ' + Math.round(feed.strength * 100) + '% strength' : 'none until spring';
+    document.getElementById('o-thick').textContent = thickGround + ' in ground / ' + thickPot + ' in pot';
+    document.getElementById('o-repot').textContent = repot + ' yr';
+    document.getElementById('o-wverdict').textContent = 'Watering: ' + BonsaiMath.wateringVerdict(water) + '.';
+  }
+  var presets = {
+    juniper: {treeType:'conifer', style:'informal', heightIn:10, canopyIn:12, trunkIn:1.25, ageYears:8, tempF:75, season:'spring', targetIn:1.5, speed:'slow'},
+    maple: {treeType:'deciduous', style:'informal', heightIn:22, canopyIn:20, trunkIn:2, ageYears:12, tempF:80, season:'summer', targetIn:2.5, speed:'medium'},
+    ficus: {treeType:'tropical', style:'informal', heightIn:14, canopyIn:12, trunkIn:1.5, ageYears:6, tempF:72, season:'winter', targetIn:2, speed:'fast'},
+    pinetrain: {treeType:'conifer', style:'informal', heightIn:16, canopyIn:14, trunkIn:1, ageYears:5, tempF:70, season:'spring', targetIn:3, speed:'slow'}
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('.presets button'), function (b) {
+    b.addEventListener('click', function () {
+      var p = presets[b.getAttribute('data-p')];
+      if (!p) return;
+      Object.keys(p).forEach(function (k) { document.getElementById(k).value = p[k]; });
+      compute();
+    });
+  });
+  ids.forEach(function (id) {
+    document.getElementById(id).addEventListener('input', compute);
+    document.getElementById(id).addEventListener('change', compute);
+  });
+  compute();
+})();
+</script>
+</body>
+</html>
